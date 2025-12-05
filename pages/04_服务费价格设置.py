@@ -22,13 +22,13 @@ st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.markdown("""
 <div class='card-title'>
   <div class='icon-circle'>🧭</div>
-  操作说明
+  操作流程
 </div>
 
-1. 上传 **站点电价分时段表**（包含电费-1月〜电费-12月字段）。  
+1. 上传 **站点电价 / 服务费分时段表**（包含「电费-1月〜电费-12月」或「服务费-1月〜服务费-12月」字段）。  
 2. 上传 **服务费价格表**（包含一口价服务费、尖、峰、平、谷、深）。  
-3. 选择月份，系统将根据【当月电费时段划分】生成对应的服务费时段价格。  
-4. 若某站点任意月份的电费时段为 **0:00 - 24:00**，则自动使用“一口价服务费”。  
+3. 选择月份，系统将根据【当月电费/服务费时段划分】生成对应的服务费时段价格。  
+4. 若某站点任意月份的时段为 **0:00 - 24:00**，则自动使用“一口价服务费”。  
 
 """, unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
@@ -46,7 +46,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 file_station = st.file_uploader(
-    "① 上传站点信息（含电费-1月〜电费-12月）",
+    "① 上传站点信息（含『电费-1月/服务费-1月』〜『电费-12月/服务费-12月』）",
     type=["xlsx"],
     key="station_fee_structure"
 )
@@ -68,7 +68,7 @@ st.markdown("</div>", unsafe_allow_html=True)
 # ===============================
 pattern = re.compile(r"(\S+)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})")
 
-def parse_line(line):
+def parse_line(line: str):
     """
     输入 "谷 0:00 - 7:00"
     输出 ("谷", "0:00", "7:00")
@@ -78,6 +78,28 @@ def parse_line(line):
         return None
     tier, start, end = m.group(1), m.group(2), m.group(3)
     return tier, start, end
+
+
+def detect_month_col(df: pd.DataFrame, month: int) -> str | None:
+    """
+    兼容：
+      - 电费-1月 / 电费-2月 ...
+      - 服务费-1月 / 服务费-2月 ...
+    返回匹配到的列名，找不到则返回 None。
+    """
+    # 优先精确匹配这两个名字
+    candidates = [f"电费-{month}月", f"服务费-{month}月"]
+    for c in candidates:
+        if c in df.columns:
+            return c
+
+    # 如果没精确匹配到，再模糊找一下：列名里同时包含“月”和“电费/服务费”
+    month_str = f"{month}月"
+    for col in df.columns:
+        if month_str in str(col) and ("电费" in str(col) or "服务费" in str(col)):
+            return col
+
+    return None
 
 
 # ===============================
@@ -100,19 +122,21 @@ if st.button("▶ 生成服务费时段", use_container_width=True):
     df_station = pd.read_excel(file_station)
     df_service_price = pd.read_excel(file_service)
 
-    # 本月电费字段名
-    fee_col = f"电费-{month}月"
+    # 智能识别本月时段字段名：既兼容“电费-1月”也兼容“服务费-1月”
+    fee_col = detect_month_col(df_station, month)
 
-    if fee_col not in df_station.columns:
-        st.error(f"❌ 未找到字段：{fee_col}")
+    if fee_col is None:
+        st.error(f"❌ 未在站点信息表中找到 {month} 月对应的『电费-X月 / 服务费-X月』字段，请检查列名。")
         st.stop()
+    else:
+        st.info(f"本次使用的时段字段为：**{fee_col}**")
 
     results = []
 
     for idx, row in df_station.iterrows():
 
-        station = row["站点名称"]
-        fee_text = row[fee_col]
+        station = row.get("站点名称")
+        fee_text = row.get(fee_col)
 
         # 找该站点的服务费价格
         matched = df_service_price[df_service_price["站点名称"] == station]
@@ -126,7 +150,7 @@ if st.button("▶ 生成服务费时段", use_container_width=True):
 
         price_info = matched.iloc[0]
 
-        # 多行电费时段拆分
+        # 多行时段拆分
         fee_lines = str(fee_text).split("\n")
 
         # 判断是否含 0:00 - 24:00 → 一口价
