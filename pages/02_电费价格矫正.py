@@ -44,27 +44,34 @@ st.markdown("""
 
 source = st.radio(
     "请选择电价来源：",
-    ["从 Page1 导入电价表（推荐）", "上传 Excel 文件"]
+    ["从 Page1 导入电价表（推荐）", "上传 Excel 文件"],
+    horizontal=False
 )
 
-df = None
+df: pd.DataFrame | None = None
+df_fixed = st.session_state.get("price_fixed")   # 👈 已保存的修正版（如果有）
 
 # ---------------------------
-# 来源 1：Page1 自动解析结果
+# 情况 1：优先使用已保存的修正版
 # ---------------------------
-if source == "从 Page1 导入电价表（推荐）":
-    df = st.session_state.get("price_raw")
-    if df is None:
-        st.warning("⚠ Page1 尚未解析电价，请先前往 Page1 进行解析，或选择上传 Excel 文件。")
+if df_fixed is not None:
+    df = df_fixed.copy()
+    st.info("当前加载的是 **上次保存的电价修正版**。如需重新从 Page1 或 Excel 载入，请先在下方选择来源并重新上传/解析。")
 
 # ---------------------------
-# 来源 2：上传 Excel 表
+# 如果还没有修正版，再按来源取数据
 # ---------------------------
-else:
-    uploaded_file = st.file_uploader("上传电价 Excel 文件", type=["xlsx"])
-    if uploaded_file:
-        df = pd.read_excel(uploaded_file)
-
+if df is None:
+    if source == "从 Page1 导入电价表（推荐）":
+        df_raw = st.session_state.get("price_raw")
+        if df_raw is None:
+            st.warning("⚠ Page1 尚未解析电价，请先前往 Page1 进行解析，或选择上传 Excel 文件。")
+        else:
+            df = df_raw.copy()
+    else:
+        uploaded_file = st.file_uploader("上传电价 Excel 文件", type=["xlsx"])
+        if uploaded_file:
+            df = pd.read_excel(uploaded_file)
 
 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -84,29 +91,31 @@ if df is not None:
 
     st.info("🔧 提示：在表格中可直接增删改查，并支持快捷键编辑（如 Delete / Ctrl+X）。")
 
-    # Editable DataFrame
+    # 用 df 作为当前可编辑基准（无论是原始数据还是修正版）
     edited_df = st.data_editor(
         df,
-        num_rows="dynamic",  # 增加/减少行
-        use_container_width=True
+        num_rows="dynamic",
+        use_container_width=True,
+        key="price_editor"      # 固定一个 key，保证返回值稳定
     )
 
     # 保存按钮
     if st.button("💾 保存电价修正版", use_container_width=True):
-        st.session_state["price_fixed"] = edited_df
+        # 1. 写入 session_state（供本页 + 其他页面使用）
+        st.session_state["price_fixed"] = edited_df.copy()
 
         st.success("已保存修正版，可用于 Page3 & Page6。")
 
-        # 允许下载修正版
-        buf = BytesIO()
-        edited_df.to_excel(buf, index=False)
-        st.download_button(
-            "📥 下载电价修正版（Excel）",
-            buf.getvalue(),
-            "电价修正版.xlsx",
-            mime="application/vnd.ms-excel",
-            use_container_width=True
-        )
+    # 只要当前有可编辑数据，就给一个长期存在的下载按钮（总是下载“当前编辑内容”）
+    buf = BytesIO()
+    edited_df.to_excel(buf, index=False)
+    st.download_button(
+        "📥 下载当前电价表（Excel）",
+        buf.getvalue(),
+        "电价修正版.xlsx",
+        mime="application/vnd.ms-excel",
+        use_container_width=True
+    )
 
     st.markdown("</div>", unsafe_allow_html=True)
 
