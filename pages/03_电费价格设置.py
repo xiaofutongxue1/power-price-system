@@ -3,8 +3,6 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
-
-# ========== 你的核心电费计算函数（原封不动放这里） ==========
 import re
 
 def parse_time_rule_line(line):
@@ -34,7 +32,7 @@ def get_price(tier, row):
 def process_station_prices(df_station, df_price, month):
     df_station = df_station.copy()
     df_station["配置"] = df_station["配置"].astype(str).str.strip()
-    df_station = df_station[df_station["配置"] != "其他"]
+    #df_station = df_station[df_station["配置"] != "其他"]
 
     output = []
     errors = []
