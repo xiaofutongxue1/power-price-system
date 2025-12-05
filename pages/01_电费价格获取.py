@@ -15,26 +15,57 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ===============================
+# 本页局部样式（告警卡片）
+# ===============================
+st.markdown("""
+<style>
+.warning-card {
+    background: #fee2e2;
+    border-radius: 14px;
+    padding: 18px 22px;
+    border-left: 6px solid #dc2626;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 24px rgba(220, 38, 38, 0.15);
+}
+.warning-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: #991b1b;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.warning-list {
+    margin: 6px 0 0 0;
+    padding-left: 1.2rem;
+    color: #7f1d1d;
+    font-size: 14px;
+}
+.warning-tip {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #7f1d1d;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ===============================
 # 顶部红色警告区
 # ===============================
 st.markdown("""
-<div style="
-    background:#FEE2E2;
-    color:#991B1B;
-    padding:18px 22px;
-    border-left:6px solid #DC2626;
-    border-radius:8px;
-    font-size:16px;
-    margin-bottom:25px;">
-⚠️ <b>以下省份暂不支持自动解析</b> 
- 
-- <b>国网图片格式</b>：湖北省、山东省、河南省  
-
-- <b>南网数据格式</b>：云南省、广东省、贵州省  
-
-请在 Page2 中手动上传 Excel 进行矫正。
+<div class="warning-card">
+  <div class="warning-title">
+    ⚠️ 以下省份暂不支持自动解析
+  </div>
+  <ul class="warning-list">
+    <li><b>国网图片格式</b>：湖北省、山东省、河南省等</li>
+    <li><b>南网数据格式</b>：云南省、广东省、贵州省等</li>
+  </ul>
+  <div class="warning-tip">
+    请在 <b>Page2「电费价格矫正」</b> 中手动上传 Excel 进行矫正。
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -493,10 +524,8 @@ def parse_price_from_urls(url_list):
 # =============================== UI 部分 ================================
 # ========================================================================
 
-
 # 输入区卡片
 st.markdown("<div class='card'>", unsafe_allow_html=True)
-
 st.markdown("""
 <div class='card-title'>
     <div class='icon-circle'>🔗</div>
@@ -504,30 +533,33 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+st.caption("支持一次粘贴多个链接，每行一个；仅支持国网 95598 公示的电价 PDF。")
+
 url_text = st.text_area(
     "每行一个 PDF 链接",
     height=200,
     placeholder="https://www.95598.cn/...pdf\nhttps://www.95598.cn/...pdf"
 )
 
-
+# 解析按钮
 if st.button("▶ 解析电价", use_container_width=True):
 
-    urls = [u
-            for u in url_text.splitlines()
-            if u.strip()]
+    urls = [u.strip() for u in url_text.splitlines() if u.strip()]
 
     if not urls:
         st.error("❌ 请至少粘贴一个链接")
+        st.markdown("</div>", unsafe_allow_html=True)
         st.stop()
 
-    df_price, errors = parse_price_from_urls(urls)
+    with st.spinner("正在解析 PDF 电价表，请稍候…"):
+        df_price, errors = parse_price_from_urls(urls)
 
+    # 把结果存入 session_state，后续 Page2 直接沿用
     st.session_state["price_raw"] = df_price
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 输出卡片
+    # 输出卡片：解析结果
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("""
     <div class='card-title'>
@@ -538,7 +570,7 @@ if st.button("▶ 解析电价", use_container_width=True):
 
     if df_price is not None and not df_price.empty:
         st.success(f"解析完成：共 {len(df_price)} 条记录")
-        st.dataframe(df_price)
+        st.dataframe(df_price, use_container_width=True)
 
         buf = BytesIO()
         df_price.to_excel(buf, index=False)
@@ -550,11 +582,11 @@ if st.button("▶ 解析电价", use_container_width=True):
             use_container_width=True
         )
     else:
-        st.warning("⚠ 未能解析任何电价")
+        st.warning("⚠ 未能解析任何电价，请检查链接是否为有效的国网电价 PDF。")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # 错误卡片
+    # 输出卡片：错误列表
     if errors:
         st.markdown("<div class='card'>", unsafe_allow_html=True)
         st.markdown("""
@@ -564,8 +596,9 @@ if st.button("▶ 解析电价", use_container_width=True):
         </div>
         """, unsafe_allow_html=True)
         err_df = pd.DataFrame(errors, columns=["URL", "错误信息"])
-        st.dataframe(err_df)
+        st.dataframe(err_df, use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
 else:
+    # 没点按钮时，正常关闭输入卡片的 div
     st.markdown("</div>", unsafe_allow_html=True)
