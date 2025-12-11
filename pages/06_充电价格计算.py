@@ -160,7 +160,7 @@ col_a, col_b = st.columns(2)
 with col_a:
     st.markdown("#### ⚡ 电费数据（来自 Page3 或 Excel）")
 
-    has_page3 = "station_power_result" in st.session_state or "page3_power_result" in st.session_state
+    has_page3 = "station_fee" in st.session_state
 
     if has_page3:
         st.success("检测到 Page3 生成的电费结果，可直接沿用。")
@@ -234,14 +234,13 @@ df_serv = None
 
 # ---- 电费 DF ----
 if "沿用" in src_elec:
-    # 兼容两种 key 写法
-    if "station_power_result" in st.session_state:
-        df_elec = st.session_state["station_power_result"].copy()
-    elif "page3_power_result" in st.session_state:
-        df_elec = st.session_state["page3_power_result"].copy()
+    # 直接使用 Page3 保存的 station_fee
+    if "station_fee" in st.session_state:
+        df_elec = st.session_state["station_fee"].copy()
 else:
     if elec_file is not None:
         df_elec = pd.read_excel(elec_file)
+
 
 # ---- 服务费 DF ----
 if "沿用" in src_serv and has_page5_raw:
