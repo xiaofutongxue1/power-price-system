@@ -154,7 +154,9 @@ if st.button("▶ 生成服务费时段", use_container_width=True):
         fee_lines = str(fee_text).split("\n")
 
         # 判断是否含 0:00 - 24:00 → 一口价
-        is_flat = any(("0:00" in line and "24:00" in line) for line in fee_lines)
+        flat_pattern = re.compile(r"\b0:00\s*-\s*24:00\b")
+
+        is_flat = any(flat_pattern.search(line) for line in fee_lines)
 
         if is_flat:
             flat_price = price_info.get("一口价服务费")
