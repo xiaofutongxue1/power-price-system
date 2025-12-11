@@ -177,16 +177,24 @@ def init_state(key, default):
     if key not in st.session_state:
         st.session_state[key] = default
 
-init_state("price_raw", None)            # Page1 原始电价解析
-init_state("price_fixed", None)          # Page2 电价修正版
+# Page1 / Page2
+init_state("price_raw", None)            # 电价解析结果
+init_state("price_fixed", None)          # 电价修正版
 
-init_state("station_info", None)         # Page3 站点基础信息
-init_state("station_fee", None)          # Page3 站点分时电费
+# Page3
+init_state("station_info", None)         # 站点基础信息（如果有用）
+init_state("station_fee", None)          # 站点分时电费结果
 
-init_state("service_price_raw", None)    # Page4 / Page5 服务费结果
-init_state("service_price_fixed", None)  # Page5 服务费矫正版
+# Page4 / Page5
+init_state("service_price_raw", None)    # 服务费原始结果（Page4）
+init_state("service_price_corrected", {})# 服务费矫正后的 dict（Page5）
 
-init_state("total_price", None)          # Page6 充电总价结果
+# Page6
+init_state("total_price_result", None)   # 充电总价表
+init_state("total_price_detail", {})     # 总价拆分详情（可选）
+
+# Page7
+init_state("price_template_df", None)    # 模板数据集
 
 
 # ================================
@@ -215,7 +223,7 @@ st.markdown("""
     <div class='badge'>⚡ 岚图超充站 · Tariff Engine</div>
     <div style="margin-top:10px;">岚图超充站电价管理系统</div>
     <div class='sub-header'>
-      从「国网 PDF 电价解析」到「站点电价 / 服务费 / 充电总价」的一站式自动化管理工具。
+      从「国网 PDF 电价解析」到「站点电价 / 服务费 / 充电总价 / 价格模板」的一站式自动化管理工具。
     </div>
   </div>
 </div>
@@ -243,6 +251,7 @@ with col_left:
         <li>④ <b>服务费价格设置</b>：上传站点 & 服务费表，自动映射生成站点级分时服务费。</li>
         <li>⑤ <b>服务费价格矫正</b>：编辑服务费时间段，自动校验是否覆盖 0:00–24:00。</li>
         <li>⑥ <b>充电价格计算</b>：叠加电费 & 服务费，支持任意时间段交集计费与导出。</li>
+        <li>⑦ <b>价格模板数据集生成</b>：整合电费 / 服务费 / 总价与站点信息，输出一键可用的价格执行模板。</li>
     </ul>
     """, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -259,7 +268,8 @@ with col_left:
         <li><b>Step 2 · 校正电价</b>：在「电费价格矫正」中检查、增删、调价，将解析结果保存为修正版。</li>
         <li><b>Step 3 · 生成站点电价</b>：在「电费价格设置」中上传站点信息，自动匹配并形成分时电费。</li>
         <li><b>Step 4 · 生成 & 校正服务费</b>：在「服务费价格设置 / 矫正」中配置每个站点的分时服务费策略。</li>
-        <li><b>Step 5 · 总价计算与导出</b>：在「充电价格计算」中合并电费 + 服务费，导出可直接落地执行的充电单价表。</li>
+        <li><b>Step 5 · 总价计算</b>：在「充电价格计算」中合并电费 + 服务费，得到站点级充电总价。</li>
+        <li><b>Step 6 · 价格模板输出</b>：在「价格模板数据集生成」中整合所有结果，导出正式执行的价格模板。</li>
     </ul>
     <div class='tip-text'>
       提示：如有新的数据字段或电价规则，可在后续版本中继续扩展，目前版本主要服务岚图超充站内部管理使用。
@@ -285,9 +295,19 @@ with col_right:
     html_status += "<br/>"
     html_status += render_status("站点电费结构（Page3）", st.session_state["station_fee"] is not None)
     html_status += "<br/>"
-    html_status += render_status("服务费结果（Page4/5）", st.session_state["service_price_raw"] is not None or st.session_state["service_price_fixed"] is not None)
+
+    # 服务费结果：只要原始或矫正里有一个就算“已就绪”
+    ready_service = (
+        st.session_state["service_price_raw"] is not None
+        or bool(st.session_state["service_price_corrected"])
+    )
+    html_status += render_status("服务费结果（Page4/5）", ready_service)
     html_status += "<br/>"
-    html_status += render_status("充电总价表（Page6）", st.session_state["total_price"] is not None)
+
+    html_status += render_status("充电总价表（Page6）", st.session_state["total_price_result"] is not None)
+    html_status += "<br/>"
+
+    html_status += render_status("价格模板（Page7）", st.session_state["price_template_df"] is not None)
 
     st.markdown(html_status, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
@@ -300,7 +320,7 @@ with col_right:
         使用小贴士
     </div>
     <ul class='feature-list'>
-        <li>推荐按照左侧菜单的 ① → ⑥ 顺序依次完成配置。</li>
+        <li>推荐按照左侧菜单的 ① → ⑦ 顺序依次完成配置。</li>
         <li>部分临时状态只保存在 <code>session_state</code> 中，刷新页面可能会丢失数据。</li>
         <li>如需彻底重置，可在浏览器中刷新首页重新开始本轮配置。</li>
     </ul>
