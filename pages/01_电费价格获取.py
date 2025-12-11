@@ -60,7 +60,7 @@ st.markdown("""
     ⚠️ 以下省份暂不支持自动解析
   </div>
   <ul class="warning-list">
-    <li><b>国网图片格式</b>：湖北省、山东省、河南省等</li>
+    <li><b>国网图片格式</b>：湖北省、山东省、河南省、天津市等</li>
     <li><b>南网数据格式</b>：云南省、广东省、贵州省等</li>
   </ul>
   <div class="warning-tip">
@@ -408,8 +408,10 @@ def parse_single_pdf(pdf_path):
         # 浙江取第 2、3 条
         if len(row_indices) >= 3:
             row_indices = row_indices[1:3]
+            row_indices = [row_indices[1], row_indices[0]]
         else:
             row_indices = row_indices[:2]
+            row_indices = [row_indices[1], row_indices[0]]
 
     elif "江苏" in province:
         # 江苏 PDF 里是 先两部制 后单一制，需要反过来
