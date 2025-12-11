@@ -5,6 +5,7 @@ import pandas as pd
 from io import BytesIO
 import re
 
+# ========== 时间规则解析函数（不动） ==========
 def parse_time_rule_line(line):
     line = line.strip()
     if re.match(r"^\d{1,2}:\d{2}", line):
@@ -29,10 +30,10 @@ def get_price(tier, row):
         return row.get("不分时电价", None)
     return row.get(tier, None)
 
+# ========== 核心计算函数 ==========
 def process_station_prices(df_station, df_price, month):
     df_station = df_station.copy()
     df_station["配置"] = df_station["配置"].astype(str).str.strip()
-    #df_station = df_station[df_station["配置"] != "其他"]
 
     output = []
     errors = []
@@ -41,14 +42,41 @@ def process_station_prices(df_station, df_price, month):
     for _, r in df_station.iterrows():
 
         prov = r["所在省份"]
-        city = r["所属市区"]
+        city = r.get("所属市区", "")
         config = str(r["配置"]).strip()
         fs = str(r["是否分时"]).strip()
         mult = float(r["电费乘子"])
         rule_txt = r.get(col, "")
 
-        match = df_price[(df_price["省份"] == prov) &
-                         (df_price["制度"] == config)]
+        # ------- 关键：广东省按城市匹配，其它省按省份匹配 --------
+        if "广东" in str(prov):
+            # 先按 省份 + 制度 + 城市 精确匹配
+            if "城市" in df_price.columns:
+                match = df_price[
+                    (df_price["省份"] == prov)
+                    & (df_price["制度"] == config)
+                    & (df_price["城市"] == str(city).strip())
+                ]
+            else:
+                # 万一电价表没有“城市”列，就退回省份 + 制度
+                match = df_price[
+                    (df_price["省份"] == prov)
+                    & (df_price["制度"] == config)
+                ]
+
+            # 如果按城市完全没匹配到，再退回 省份 + 制度
+            if match.empty:
+                match = df_price[
+                    (df_price["省份"] == prov)
+                    & (df_price["制度"] == config)
+                ]
+        else:
+            # 其他省份：省份 + 制度
+            match = df_price[
+                (df_price["省份"] == prov)
+                & (df_price["制度"] == config)
+            ]
+        # ----------------------------------------------------
 
         if match.empty:
             final = "未匹配到价格"
@@ -164,33 +192,26 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-if st.button("▶ 开始计算电费", use_container_width=True):
+if st.button("▶ 开始计算电费", width="stretch"):
 
-    # 检查站点信息是否上传
     if station_file is None:
         st.error("❌ 请上传站点信息文件！")
         st.stop()
 
     df_station = pd.read_excel(station_file)
 
-    # 检查电价表是否有效
     if df_price is None or df_price.empty:
         st.error("❌ 电价表为空，请检查来源或先完成 Page1/Page2。")
         st.stop()
 
-    # 开始计算
     with st.spinner("正在为每个站点生成分时电费……"):
-
         df_out, errors = process_station_prices(df_station, df_price, month)
 
-    # 保存到全局 state（用于 Page6）
     st.session_state["station_fee"] = df_out
 
-    # 显示结果
     st.success(f"电费计算完成，共 {len(df_out)} 条记录。")
-    st.dataframe(df_out, use_container_width=True)
+    st.dataframe(df_out, width="stretch")
 
-    # 下载结果
     buf = BytesIO()
     df_out.to_excel(buf, index=False)
     st.download_button(
@@ -198,13 +219,12 @@ if st.button("▶ 开始计算电费", use_container_width=True):
         buf.getvalue(),
         f"电费计算_{month}月.xlsx",
         mime="application/vnd.ms-excel",
-        use_container_width=True
+        width="stretch"
     )
 
-    # 显示未匹配到电价的站点
     if errors:
         st.warning("以下站点未匹配到电价：")
         err_df = pd.DataFrame(errors, columns=["序号", "站点名称", "省份", "城市", "配置"])
-        st.dataframe(err_df)
+        st.dataframe(err_df, width="stretch")
 
 st.markdown("</div>", unsafe_allow_html=True)
