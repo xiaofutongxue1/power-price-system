@@ -6,7 +6,6 @@ from io import BytesIO
 import pandas as pd
 from openpyxl.styles import Font, Alignment
 
-
 # ================================
 # 常量配置
 # ================================
@@ -38,7 +37,6 @@ ALL_COLS = [
     "竞品价格",
 ]
 
-
 # ================================
 # 页面标题
 # ================================
@@ -54,7 +52,6 @@ st.markdown("""
 <strong>「序号 + 站点信息 + 定价策略 + 本次生效价格」</strong> 的完整价格模板 Excel。
 </div>
 """, unsafe_allow_html=True)
-
 
 # ================================
 # 1. 上传三张“结构表”
@@ -91,7 +88,6 @@ file_serv_avg = st.file_uploader(
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-
 # ================================
 # 2. 统一策略文本 & 生效时间
 # ================================
@@ -116,7 +112,6 @@ effective_time = st.text_input(
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-
 # ================================
 # 3. 电费 / 服务费 / 总价 结果来源
 # ================================
@@ -131,16 +126,13 @@ st.markdown("""
 如果 session 中未检测到，则需要你手动上传。
 """, unsafe_allow_html=True)
 
-# Page3：电费结果（pages/03_电费价格设置.py 里保存的）
+# Page3：电费结果
 power_df_state = st.session_state.get("station_fee")
-
-# Page4：服务费结果原始（pages/04_服务费价格设置.py 保存的）
+# Page4：服务费结果原始
 service_df_state = st.session_state.get("service_price_raw")
-
-# Page5：服务费矫正结果映射（dict：站点名称 -> 分段列表）
+# Page5：服务费矫正结果映射
 corrected_map = st.session_state.get("service_price_corrected", {})
-
-# Page6：总价结果（pages/06_充电价格计算.py 保存的）
+# Page6：总价结果
 total_df_state = st.session_state.get("total_price_result")
 
 need_power_upload = not isinstance(power_df_state, pd.DataFrame) or power_df_state.empty
@@ -169,10 +161,9 @@ with col_s:
     if not need_serv_upload:
         st.success("已检测到 Page4/5 的服务费结果，可直接使用（优先使用 Page5 矫正后数据）。")
 
-        raw = service_df_state.copy()  # Page4 生成的原始服务费结果：站点名称 + 服务费
+        raw = service_df_state.copy()
         station_list = raw["站点名称"].unique().tolist()
 
-        # 如果有 Page5 矫正数据，则优先使用矫正结果
         if isinstance(corrected_map, dict) and corrected_map:
             rows = []
             for name in station_list:
@@ -186,7 +177,6 @@ with col_s:
                 rows.append({"站点名称": name, "服务费": txt})
             service_df = pd.DataFrame(rows)
         else:
-            # 没有矫正过就直接使用 Page4 原始结果
             service_df = raw[["站点名称", "服务费"]].copy()
 
         serv_file_upload = None
@@ -216,7 +206,6 @@ with col_t:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
-
 # ================================
 # 4. 点击生成模板
 # ================================
@@ -235,9 +224,9 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         st.error("❌ 请先上传：电费价格时段表 / 服务费价格时段表 / 当前服务费均价表。")
         st.stop()
 
-    df_elec_struct = pd.read_excel(file_elec_struct)   # 电费时段结构
-    df_serv_struct = pd.read_excel(file_serv_struct)   # 服务费时段结构
-    df_serv_avg = pd.read_excel(file_serv_avg)         # 当前服务费均价
+    df_elec_struct = pd.read_excel(file_elec_struct)
+    df_serv_struct = pd.read_excel(file_serv_struct)
+    df_serv_avg = pd.read_excel(file_serv_avg)
 
     required_elec_cols = {"序号", "站点编号", "供电规则"}
     required_serv_cols = {"站点全称", "站点编号", "站点名称", "目标服务费"}
@@ -256,7 +245,7 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         st.stop()
 
     # -------- 4.2 电费 / 服务费 / 总价结果表处理 --------
-    # 1) 电费结果
+    # 电费结果
     if power_df is None and power_file_upload is not None:
         power_df = pd.read_excel(power_file_upload)
     if power_df is None:
@@ -266,7 +255,7 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         st.error("❌ 电费结果表必须包含列：『站点名称』『电费』。")
         st.stop()
 
-    # 2) 服务费结果
+    # 服务费结果
     if service_df is None and serv_file_upload is not None:
         service_df = pd.read_excel(serv_file_upload)
     if service_df is None:
@@ -276,13 +265,12 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         st.error("❌ 服务费结果表必须包含列：『站点名称』『服务费』。")
         st.stop()
 
-    # 3) 总价结果
+    # 总价结果
     if total_df is None and total_file_upload is not None:
         total_df = pd.read_excel(total_file_upload)
     if total_df is None:
         st.error("❌ 仍未获取到总价结果表，请上传或先在 Page6 生成。")
         st.stop()
-    # 总价列名可能叫“总价”或“总电价”，做个兼容
     if "总价" not in total_df.columns and "总电价" not in total_df.columns:
         st.error("❌ 总价结果表必须包含列：『总价』或『总电价』。")
         st.stop()
@@ -290,18 +278,14 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         total_df = total_df.rename(columns={"总价": "总电价"})
 
     # -------- 4.3 组装基础表（以服务费结构表为主） --------
-    # base：一行一个站点，包含 编号 / 全称 / 简称 / 目标服务费
     base = df_serv_struct[["站点编号", "站点全称", "站点名称", "目标服务费"]].copy()
 
-    # 把序号 & 供电规则 从电费结构表合并进来（按站点编号匹配）
     elec_seq = df_elec_struct[["站点编号", "序号", "供电规则"]].copy()
     base = base.merge(elec_seq, on="站点编号", how="left")
 
-    # 合并当前服务费均价（按站点简称匹配）
     avg_small = df_serv_avg[["站点名称", "当前服务费均价"]].copy()
     base = base.merge(avg_small, on="站点名称", how="left")
 
-    # 生成“定价策略-服务费”字段文本
     def make_service_strategy(row):
         tgt = row.get("目标服务费")
         cur = row.get("当前服务费均价")
@@ -314,10 +298,7 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
 
     base["策略_服务费"] = base.apply(make_service_strategy, axis=1)
 
-    # -------- 4.4 合并电费 / 服务费 / 总价时段文本（关键：用站点简称匹配） --------
-    # power_df / service_df / total_df 里的「站点名称」 = 简称
-    # base["站点名称"] 也是简称；base["站点全称"] 用来最终展示
-
+    # 合并电费 / 服务费 / 总价文本（按【站点简称】匹配）
     base = base.merge(
         power_df[["站点名称", "电费"]],
         on="站点名称",
@@ -337,11 +318,10 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         how="left",
     )
 
-    # -------- 4.5 生成最终模板 DataFrame --------
+    # -------- 4.4 生成最终模板 DataFrame --------
     df_tpl = pd.DataFrame({
         "序号": base["序号"],
-        # 最终展示用【站点全称】
-        "站点名称": base["站点全称"],
+        "站点名称": base["站点全称"],      # 最终展示用全称
         "站点编号": base["站点编号"],
         "站点类型": STATION_TYPE_DEFAULT,
         "开放规则": OPEN_RULE_DEFAULT,
@@ -359,10 +339,10 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         "竞品价格": "/",
     })
 
-    # 保证列顺序
+    # 列顺序
     df_tpl = df_tpl[ALL_COLS]
 
-    # --- ① 站点编号强制转为字符串，避免 Excel 截断大整数 ---
+    # ① 站点编号强制转为字符串，避免 Excel 截断大整数
     df_tpl["站点编号"] = df_tpl["站点编号"].apply(
         lambda x: "" if pd.isna(x) else str(x)
     )
@@ -370,32 +350,35 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
     st.success(f"✅ 模板数据集生成完成，共 {len(df_tpl)} 行。")
     st.dataframe(df_tpl, use_container_width=True)
 
-    # 可选：提示哪些站点没匹配到价格，方便你排查
+    # 提示缺失价格的站点
     missing_price = df_tpl[
         df_tpl["本次生效价格-电费"].isna() |
         df_tpl["本次生效价格-服务费"].isna() |
         df_tpl["本次生效价格-总电价"].isna()
-        ]
+    ]
     if not missing_price.empty:
         st.warning("⚠ 以下站点未完全匹配到电费 / 服务费 / 总电价，请检查名称或结构表：")
         st.dataframe(missing_price[["序号", "站点名称", "站点编号"]])
 
-    # 保存到 session，方便后面再用
+    # 保存到 session
     st.session_state["price_template_df"] = df_tpl
 
+    # ================== 写 Excel + 样式设置 ==================
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-        # 写入数据
         df_tpl.to_excel(writer, index=False, sheet_name="价格模板")
 
-        # 拿到工作簿和工作表
         wb = writer.book
         ws = wb["价格模板"]
 
-        # ===== 样式设置部分 =====
-        # 字体（注意：电脑上要安装这个字体，Excel 才能正确显示）
+        # 行列信息
+        max_row = ws.max_row
+        max_col = ws.max_column
+
+        # 字体
         header_font = Font(name="微软雅黑 Light", size=10, bold=True)
         body_font = Font(name="微软雅黑 Light", size=10)
+        price_font_red = Font(name="微软雅黑 Light", size=10, color="FF0000")
 
         # 对齐：水平居中 + 垂直居中 + 自动换行
         align_center_wrap = Alignment(
@@ -404,25 +387,49 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
             wrap_text=True
         )
 
-        # 遍历所有单元格，设置样式
+        # 先统一设置对齐 + 基础字体
         for row in ws.iter_rows():
             for cell in row:
-                # 对齐统一
                 cell.alignment = align_center_wrap
-
-                # 第一行当表头，加粗
                 if cell.row == 1:
                     cell.font = header_font
                 else:
                     cell.font = body_font
 
-        # （可选）稍微加宽一点列宽，不然自动换行太挤
+        # 列宽统一设置一下
         for col in ws.columns:
             col_letter = col[0].column_letter
-            # 简单统一设一个宽度，你可以按需要调
             ws.column_dimensions[col_letter].width = 20
 
-    # 回到开头，给下载按钮用
+        # ② 合并「站点类型 / 开放规则 / 定价策略-总策略」三列（2 行到最后一行）
+        if max_row >= 2:
+            col_idx_type = df_tpl.columns.get_loc("站点类型") + 1
+            col_idx_open = df_tpl.columns.get_loc("开放规则") + 1
+            col_idx_strategy = df_tpl.columns.get_loc("定价策略-总策略") + 1
+
+            ws.merge_cells(
+                start_row=2, start_column=col_idx_type,
+                end_row=max_row, end_column=col_idx_type
+            )
+            ws.merge_cells(
+                start_row=2, start_column=col_idx_open,
+                end_row=max_row, end_column=col_idx_open
+            )
+            ws.merge_cells(
+                start_row=2, start_column=col_idx_strategy,
+                end_row=max_row, end_column=col_idx_strategy
+            )
+
+        # ③ 本次生效价格-电费 / 服务费 / 总电价 三列字体改为红色
+        col_idx_price_e = df_tpl.columns.get_loc("本次生效价格-电费") + 1
+        col_idx_price_s = df_tpl.columns.get_loc("本次生效价格-服务费") + 1
+        col_idx_price_t = df_tpl.columns.get_loc("本次生效价格-总电价") + 1
+
+        for row_idx in range(2, max_row + 1):
+            ws.cell(row=row_idx, column=col_idx_price_e).font = price_font_red
+            ws.cell(row=row_idx, column=col_idx_price_s).font = price_font_red
+            ws.cell(row=row_idx, column=col_idx_price_t).font = price_font_red
+
     buf.seek(0)
 
     st.download_button(
@@ -435,3 +442,5 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         ),
         use_container_width=True,
     )
+
+st.markdown("</div>", unsafe_allow_html=True)
