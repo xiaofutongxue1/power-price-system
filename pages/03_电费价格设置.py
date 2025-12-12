@@ -26,9 +26,23 @@ def parse_month_rule(text):
     return out
 
 def get_price(tier, row):
+    """
+    tier 可能是：""（不分时）、"尖"、"峰"、"平"、"谷" 等。
+    需求：如果 tier == "尖" 但电价表里没有 "尖" 或值为空，就自动用 "峰" 价格。
+    """
     if tier == "":
         return row.get("不分时电价", None)
-    return row.get(tier, None)
+
+    # 先按原来的 tier 取值
+    val = row.get(tier, None)
+
+    # 如果是尖时段，但没有“尖”这一列或是 NaN，则回退到“峰”
+    if tier == "尖":
+        if val is None or (isinstance(val, (int, float)) and pd.isna(val)):
+            # 回退用峰价
+            val = row.get("峰", None)
+
+    return val
 
 # ========== 核心计算函数 ==========
 def process_station_prices(df_station, df_price, month):
