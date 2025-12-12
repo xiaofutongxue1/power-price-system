@@ -2,8 +2,10 @@
 # pages/07_模板数据集生成.py
 
 import streamlit as st
-import pandas as pd
 from io import BytesIO
+import pandas as pd
+from openpyxl.styles import Font, Alignment
+
 
 # ================================
 # 常量配置
@@ -381,23 +383,46 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
     # 保存到 session，方便后面再用
     st.session_state["price_template_df"] = df_tpl
 
-    # --- ② 导出 Excel，并在导出时合并三列单元格 ---
     buf = BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        # 写入数据
         df_tpl.to_excel(writer, index=False, sheet_name="价格模板")
-        ws = writer.sheets["价格模板"]
 
-        # 只有在有数据时才合并，避免空表报错
-        if len(df_tpl) > 0:
-            # 行号：第 1 行是表头，所以数据是 2 ~ len(df_tpl)+1
-            start_row = 2
-            end_row = len(df_tpl) + 1
+        # 拿到工作簿和工作表
+        wb = writer.book
+        ws = wb["价格模板"]
 
-            # 列号：A 序号，B 站点名称，C 站点编号，D 站点类型，E 开放规则，F 定价策略-总策略
-            ws.merge_cells(f"D{start_row}:D{end_row}")  # 站点类型
-            ws.merge_cells(f"E{start_row}:E{end_row}")  # 开放规则
-            ws.merge_cells(f"F{start_row}:F{end_row}")  # 定价策略-总策略
+        # ===== 样式设置部分 =====
+        # 字体（注意：电脑上要安装这个字体，Excel 才能正确显示）
+        header_font = Font(name="微软雅黑 Light", size=10, bold=True)
+        body_font = Font(name="微软雅黑 Light", size=10)
 
+        # 对齐：水平居中 + 垂直居中 + 自动换行
+        align_center_wrap = Alignment(
+            horizontal="center",
+            vertical="center",
+            wrap_text=True
+        )
+
+        # 遍历所有单元格，设置样式
+        for row in ws.iter_rows():
+            for cell in row:
+                # 对齐统一
+                cell.alignment = align_center_wrap
+
+                # 第一行当表头，加粗
+                if cell.row == 1:
+                    cell.font = header_font
+                else:
+                    cell.font = body_font
+
+        # （可选）稍微加宽一点列宽，不然自动换行太挤
+        for col in ws.columns:
+            col_letter = col[0].column_letter
+            # 简单统一设一个宽度，你可以按需要调
+            ws.column_dimensions[col_letter].width = 20
+
+    # 回到开头，给下载按钮用
     buf.seek(0)
 
     st.download_button(
@@ -410,5 +435,3 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         ),
         use_container_width=True,
     )
-
-st.markdown("</div>", unsafe_allow_html=True)
