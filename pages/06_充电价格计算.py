@@ -160,7 +160,9 @@ col_a, col_b = st.columns(2)
 with col_a:
     st.markdown("#### ⚡ 电费数据（来自 Page3 或 Excel）")
 
-    has_page3 = "station_fee" in st.session_state
+    # 用 value 是否为非空 DataFrame 来判断 Page3 结果是否就绪
+    state_fee = st.session_state.get("station_fee", None)
+    has_page3 = isinstance(state_fee, pd.DataFrame) and not state_fee.empty
 
     if has_page3:
         st.success("检测到 Page3 生成的电费结果，可直接沿用。")
@@ -171,7 +173,7 @@ with col_a:
             key="src_elec_radio"
         )
     else:
-        st.info("Page3 尚未在 session 中保存结果，请上传电费结果 Excel。")
+        st.info("Page3 尚未在 session 中保存电费结果，请上传电费结果 Excel。")
         src_elec = st.radio(
             "电费数据来源",
             ["上传电费结果 Excel"],
@@ -206,7 +208,7 @@ with col_b:
             key="src_serv_radio"
         )
     else:
-        st.info("Page5 尚未在 session 中保存结果，请上传服务费结果 Excel。")
+        st.info("Page5 尚未在 session 中保存服务费结果，请上传服务费结果 Excel。")
         src_serv = st.radio(
             "服务费数据来源",
             ["上传服务费结果 Excel"],
@@ -222,7 +224,6 @@ with col_b:
             key="serv_upload"
         )
 
-
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================
@@ -233,19 +234,16 @@ df_elec = None
 df_serv = None
 
 # ---- 电费 DF ----
-if "沿用" in src_elec:
+if "沿用" in src_elec and has_page3:
     # 直接使用 Page3 保存的 station_fee
-    if "station_fee" in st.session_state:
-        df_elec = st.session_state["station_fee"].copy()
-else:
-    if elec_file is not None:
-        df_elec = pd.read_excel(elec_file)
-
+    df_elec = state_fee.copy()
+elif elec_file is not None:
+    df_elec = pd.read_excel(elec_file)
 
 # ---- 服务费 DF ----
 if "沿用" in src_serv and has_page5_raw:
     # 按 Page5 的逻辑，把 raw + corrected 合成为最新服务费表
-    raw = st.session_state["service_price_raw"].copy()
+    raw = raw_from_state.copy()
     station_list = raw["站点名称"].unique().tolist()
     corrected = st.session_state.get("service_price_corrected", {})
 
@@ -261,9 +259,8 @@ if "沿用" in src_serv and has_page5_raw:
         rows.append({"站点名称": name, "服务费": txt})
 
     df_serv = pd.DataFrame(rows)
-else:
-    if serv_file is not None:
-        df_serv = pd.read_excel(serv_file)
+elif serv_file is not None:
+    df_serv = pd.read_excel(serv_file)
 
 # ============================================
 # 3. 基本检查
@@ -350,8 +347,10 @@ st.markdown("</div>", unsafe_allow_html=True)
 # 5. 结果展示 & 下载
 # ============================================
 
-if "total_price_result" in st.session_state:
-    df_total = st.session_state["total_price_result"]
+df_total_state = st.session_state.get("total_price_result", None)
+
+if isinstance(df_total_state, pd.DataFrame) and not df_total_state.empty:
+    df_total = df_total_state
     detail_dict = st.session_state.get("total_price_detail", {})
 
     tab_sum, tab_detail = st.tabs(["📊 汇总结果", "🔍 单站点详情"])
@@ -373,7 +372,6 @@ if "total_price_result" in st.session_state:
                 "application/vnd.openxmlformats-officedocument."
                 "spreadsheetml.sheet"
             ),
-            use_container_width=True,
         )
 
     # -------- 单站点详情 ----------
