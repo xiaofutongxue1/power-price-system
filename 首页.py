@@ -196,6 +196,7 @@ init_state("total_price_detail", {})     # 总价拆分详情（可选）
 # Page7
 init_state("price_template_df", None)    # 模板数据集
 
+init_state("tariff_version_df", None)    # Page8 费率版本（系统导入用）
 
 # ================================
 # 一些小工具：状态徽标
@@ -245,14 +246,16 @@ with col_left:
         系统功能导航
     </div>
     <ul class='feature-list'>
-        <li>① <b>电费价格获取（PDF → 电价表）</b>：自动解析国网电价 PDF，生成标准化 Excel。</li>
-        <li>② <b>电费价格矫正</b>：对解析结果进行增删改查，保存为修正版。</li>
-        <li>③ <b>电费价格设置</b>：结合站点信息与电价表，生成站点分时电费结构。</li>
-        <li>④ <b>服务费价格设置</b>：上传站点 & 服务费表，自动映射生成站点级分时服务费。</li>
-        <li>⑤ <b>服务费价格矫正</b>：编辑服务费时间段，自动校验是否覆盖 0:00–24:00。</li>
-        <li>⑥ <b>充电价格计算</b>：叠加电费 & 服务费，支持任意时间段交集计费与导出。</li>
-        <li>⑦ <b>价格模板数据集生成</b>：整合电费 / 服务费 / 总价与站点信息，输出一键可用的价格执行模板。</li>
+        <li>① <b>电费价格获取（PDF → 电价表）</b>：自动解析国网电价 PDF，生成标准化电价 Excel。</li>
+        <li>② <b>电费价格矫正</b>：对解析结果进行增删改查，保存为修正版电价表。</li>
+        <li>③ <b>电费价格设置</b>：结合站点信息与电价表，生成站点分时电费结构（用于后续总价计算）。</li>
+        <li>④ <b>服务费价格设置</b>：导入服务费规则与站点信息，生成站点级分时服务费。</li>
+        <li>⑤ <b>服务费价格矫正</b>：编辑服务费时间段，自动校验是否覆盖 0:00–24:00，输出可用结果。</li>
+        <li>⑥ <b>充电价格计算</b>：叠加电费 + 服务费，按时段交集合并计算总价并导出。</li>
+        <li>⑦ <b>价格模板数据集生成（领导审核版）</b>：输出「领导审核/汇报」用模板（字段更全、带策略、便于审阅）。</li>
+        <li>⑧ <b>费率版本导出（系统导入版）</b>：输出「系统导入/审核」用费率版本（字段精简、费率格式符合导入规范）。</li>
     </ul>
+
     """, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -266,14 +269,16 @@ with col_left:
     <ul class='feature-list'>
         <li><b>Step 1 · 获取电价</b>：在「电费价格获取」页粘贴国网 PDF 链接，一键解析生成电价表。</li>
         <li><b>Step 2 · 校正电价</b>：在「电费价格矫正」中检查、增删、调价，将解析结果保存为修正版。</li>
-        <li><b>Step 3 · 生成站点电价</b>：在「电费价格设置」中上传站点信息，自动匹配并形成分时电费。</li>
-        <li><b>Step 4 · 生成 & 校正服务费</b>：在「服务费价格设置 / 矫正」中配置每个站点的分时服务费策略。</li>
-        <li><b>Step 5 · 总价计算</b>：在「充电价格计算」中合并电费 + 服务费，得到站点级充电总价。</li>
-        <li><b>Step 6 · 价格模板输出</b>：在「价格模板数据集生成」中整合所有结果，导出正式执行的价格模板。</li>
+        <li><b>Step 3 · 生成站点电费</b>：在「电费价格设置」中上传站点信息，匹配电价并生成分时电费结果。</li>
+        <li><b>Step 4 · 生成/校正服务费</b>：在「服务费价格设置 / 矫正」中生成分时服务费并完成校验。</li>
+        <li><b>Step 5 · 计算充电总价</b>：在「充电价格计算」中合并电费 + 服务费，得到站点级总价时段表。</li>
+        <li><b>Step 6 · 导出领导审核版本（Page7）</b>：用于领导审阅/审批的完整模板（信息更全、带策略说明）。</li>
+        <li><b>Step 7 · 导出系统导入版本（Page8）</b>：用于系统导入/系统审核的费率版本（格式规范、字段精简）。</li>
     </ul>
     <div class='tip-text'>
-      提示：如有新的数据字段或电价规则，可在后续版本中继续扩展，目前版本主要服务岚图超充站内部管理使用。
+      提示：Page7 与 Page8 面向不同使用场景——审核汇报用（07）与系统导入用（08）分别导出，避免混用。
     </div>
+
     """, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -308,6 +313,9 @@ with col_right:
     html_status += "<br/>"
 
     html_status += render_status("价格模板（Page7）", st.session_state["price_template_df"] is not None)
+
+    html_status += "<br/>"
+    html_status += render_status("费率版本（Page8）", st.session_state["tariff_version_df"] is not None)
 
     st.markdown(html_status, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
