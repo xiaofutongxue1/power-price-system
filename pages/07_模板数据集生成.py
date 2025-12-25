@@ -399,7 +399,7 @@ if st.button("▶ 生成价格模板数据集", use_container_width=True):
         # 列宽统一设置一下
         for col in ws.columns:
             col_letter = col[0].column_letter
-            ws.column_dimensions[col_letter].width = 20
+            ws.column_dimensions[col_letter].width = 27
 
         # ② 合并「站点类型 / 开放规则 / 定价策略-总策略」三列（2 行到最后一行）
         if max_row >= 2:
