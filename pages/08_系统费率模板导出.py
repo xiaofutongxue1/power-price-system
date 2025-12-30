@@ -231,7 +231,7 @@ if st.button("▶ 生成费率版本并导出", use_container_width=True):
     df_out["站点编号"] = df_out["站点编号"].apply(lambda x: "" if pd.isna(x) else str(x))
 
     # ---- 文本格式化（充电费/服务费都要转）----
-    df_out["充电费"] = df_out["充电费"].apply(lambda x: normalize_tariff_text(x, decimals=4))
+    df_out["充电费"] = df_out["充电费"].apply(lambda x: normalize_tariff_text(x, decimals=2))
     df_out["服务费"] = df_out["服务费"].apply(lambda x: normalize_tariff_text(x, decimals=2))
 
     st.success(f"✅ 费率版本生成完成，共 {len(df_out)} 行。")
@@ -273,3 +273,4 @@ if st.button("▶ 生成费率版本并导出", use_container_width=True):
     )
 
 st.markdown("</div>", unsafe_allow_html=True)
+
