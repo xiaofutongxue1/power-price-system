@@ -323,7 +323,7 @@ if st.button("▶ 开始计算总价", use_container_width=True):
         # 汇总文本
         if merged:
             total_txt = "\n".join(
-                [f"{m['start']} - {m['end']} {m['total_price']:.4f}元/度" for m in merged]
+                [f"{m['start']} - {m['end']} {m['total_price']:.2f}元/度" for m in merged]
             )
         else:
             total_txt = "未能成功合并电费与服务费，请检查源数据。"
@@ -391,4 +391,5 @@ if isinstance(df_total_state, pd.DataFrame) and not df_total_state.empty:
 
 else:
     st.info("尚未计算总价，请点击上方『开始计算总价』按钮。")
+
 
