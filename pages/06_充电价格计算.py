@@ -125,7 +125,7 @@ def merge_two_schedules(elec_rows, serv_rows):
             "end": min_to_time(e),
             "electric_price": p_e,
             "service_price": p_s,
-            "total_price": round(p_e + p_s, 4)
+            "total_price": round(p_e + p_s, 2)
         })
 
     return merged
@@ -391,3 +391,4 @@ if isinstance(df_total_state, pd.DataFrame) and not df_total_state.empty:
 
 else:
     st.info("尚未计算总价，请点击上方『开始计算总价』按钮。")
+
