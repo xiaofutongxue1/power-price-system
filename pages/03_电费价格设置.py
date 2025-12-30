@@ -101,7 +101,7 @@ def process_station_prices(df_station, df_price, month):
 
             if fs == "否":
                 p = prow["不分时电价"] * mult
-                final = f"0:00 - 24:00 {round(p, 4)}元/度"
+                final = f"0:00 - 24:00 {round(p, 2)}元/度"
 
             else:
                 rules = parse_month_rule(rule_txt)
@@ -113,7 +113,7 @@ def process_station_prices(df_station, df_price, month):
                     if base is None:
                         lines.append(f"{t} {tm} 无对应电价")
                     else:
-                        p = round(base * mult, 4)
+                        p = round(base * mult, 2)
                         if t == "":
                             lines.append(f"{tm} {p}元/度")
                         else:
@@ -242,3 +242,4 @@ if st.button("▶ 开始计算电费", width="stretch"):
         st.dataframe(err_df, width="stretch")
 
 st.markdown("</div>", unsafe_allow_html=True)
+
