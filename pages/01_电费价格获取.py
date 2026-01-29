@@ -329,7 +329,7 @@ def find_voltage_rows_1_10kv(df):
     """
     # 1) 先找 1-10（20）千伏 / 1-10千伏 / 1~10千伏
     pattern_1_10 = re.compile(
-        r"1\s*[-~～至到]\s*10(?:（\s*20\s*）|\(\s*20\s*\))?\s*(千伏|kV|KV)"
+        r"1\s*[-~～至到]\s*10(?:（\s*20\s*）|\(\s*20\s*\))?\s*(千伏|kV|KV|千)"
     )
     idxs = []
     for i, row in df.iterrows():
@@ -604,3 +604,4 @@ if st.button("▶ 解析电价", use_container_width=True):
 else:
     # 没点按钮时，正常关闭输入卡片的 div
     st.markdown("</div>", unsafe_allow_html=True)
+
